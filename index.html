@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nova-X AI</title>
+
+  <!-- Local CSS via Flask -->
+  <style>
+    * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  background: #0f0f0f;
+  color: #00ffcc;
+  font-family: 'Orbitron', sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.center {
+  text-align: center;
+  flex-grow: 0;
+  padding: 20px;
+}
+
+#typing-text {
+  font-size: 2.5em;
+  border-right: 2px solid #00ffcc;
+  white-space: nowrap;
+  overflow: hidden;
+  width: fit-content;
+  margin: auto;
+  animation: blink-caret 0.75s step-end infinite;
+}
+
+@keyframes blink-caret {
+  50% {
+    border-color: transparent;
+  }
+}
+
+/* Chat message area */
+.chat-container {
+  padding: 20px;
+  max-height: 50vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 80px;
+}
+
+.message {
+  max-width: 70%;
+  padding: 12px 18px;
+  border-radius: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.user-message {
+  align-self: flex-end;
+  background-color: #00ffcc;
+  color: #0f0f0f;
+  border-bottom-right-radius: 0;
+}
+
+.bot-message {
+  align-self: flex-start;
+  background-color: #1f1f1f;
+  color: #00ffcc;
+  border-bottom-left-radius: 0;
+}
+
+/* Input area */
+.input-container {
+  width: 100%;
+  position: fixed;
+  bottom: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+input[type="text"] {
+  width: 60%;
+  padding: 15px 20px;
+  border-radius: 30px 0 0 30px;
+  border: none;
+  outline: none;
+  background-color: #1f1f1f;
+  color: #00ffcc;
+  font-size: 18px;
+  border: 2px solid #00ffcc;
+}
+
+button#submitBtn {
+  padding: 15px 25px;
+  border-radius: 0 30px 30px 0;
+  border: none;
+  background-color: #00ffcc;
+  color: #0f0f0f;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button#submitBtn:hover {
+  background-color: #00c4aa;
+}
+
+  </style>
+
+  <!-- External Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="center">
+    <h1 id="typing-text"></h1>
+  </div>
+
+  <div class="chat-container" id="chatContainer"></div>
+
+  <div class="input-container">
+    <input type="text" placeholder="Type your question..." id="userInput" />
+    <button id="submitBtn">➤</button>
+  </div>
+
+  <!-- Local JS via Flask -->
+  <script>
+    const typingElement = document.getElementById("typing-text");
+
+const messages = ["Welcome to Nova-X", "How can I help you?"];
+let messageIndex = 0;
+let charIndex = 0;
+let isDeleting = false;
+
+function type() {
+  const currentMessage = messages[messageIndex];
+
+  if (!isDeleting) {
+    typingElement.textContent = currentMessage.substring(0, charIndex + 1);
+    charIndex++;
+
+    if (charIndex === currentMessage.length) {
+      if (messageIndex === 0) {
+        setTimeout(() => {
+          isDeleting = true;
+          type();
+        }, 1500);
+        return;
+      }
+    }
+  } else {
+    typingElement.textContent = currentMessage.substring(0, charIndex - 1);
+    charIndex--;
+
+    if (charIndex === 0) {
+      isDeleting = false;
+      messageIndex++;
+    }
+  }
+
+  let speed = isDeleting ? 40 : 80;
+  if (messageIndex < messages.length) {
+    setTimeout(type, speed);
+  }
+}
+
+type();
+
+// Chat logic
+const input = document.getElementById("userInput");
+const button = document.getElementById("submitBtn");
+const chatContainer = document.getElementById("chatContainer");
+
+button.addEventListener("click", handleSubmit);
+input.addEventListener("keypress", function (e) {
+  if (e.key === "Enter") handleSubmit();
+});
+
+async function handleSubmit() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = "";
+
+  addMessage(text, "user");
+
+  try {
+    const response = await fetch("http://127.0.0.1:5000/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+
+    const data = await response.json();
+    addMessage(data.response, "bot");
+  } catch (error) {
+    addMessage("⚠️ Error talking to Nova-X.", "bot");
+    console.error(error);
+  }
+}
+
+function addMessage(text, sender) {
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender === "user" ? "user-message" : "bot-message");
+  msg.textContent = text;
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+  </script>
+</body>
+</html>
